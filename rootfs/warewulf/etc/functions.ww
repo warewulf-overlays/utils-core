@@ -24,6 +24,12 @@ else
    exit 1
 fi
 
+# Check for local settings as well. This allows us to keep site-specific things
+# in a place untracked by git.
+if [[ -f $(dirname ${BASH_SOURCE})/settings-local ]]; then
+    source $(dirname ${BASH_SOURCE})/settings-local
+fi
+
 #######################################################################################
 #######################################################################################
 ################################# Function Library. ###################################
