@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Info about master and container.
+export WWNODENAME="{{ $.Id }}"
+export WWMASTER="{{ .BuildHost }}"
+export WWBUILD="{{ .BuildTime }}"
+export WWSOURCE="{{ .BuildSource }}"
+
+# Default/Provisioning Network Info.
+{{range $devname, $netdev := .NetDevs -}}
+{{ if eq $netdev.Primary "true" -}}
+export WWNETDEV="{{ $devname }}"
+export WWHWADDR="{{ $netdev.Hwaddr }}"
+export WWIPADDR="{{ $netdev.Ipaddr }}"
+{{ end -}} 
+{{ end }}
+# Associative array with all networking info.
+declare -A -g WWNETDEVS
+{{range $devname, $netdev := .NetDevs -}}
+WWNETDEVS["{{- $devname -}}"]="IPADDR={{ $netdev.Ipaddr }},NETMASK={{ $netdev.Netmask }},HWADDR={{ $netdev.Hwaddr }}"
+{{ end -}}
+

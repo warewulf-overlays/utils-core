@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# Allow for running unit tests on this script.
+# Are we being sourced or ran directly? We store the following to find out.
+# VARIABLE    VALUE_SOURCED    VALUE_EXECUTED
+# $_          _filedir         EMPTY
+# $0          sourcing_cmd     filename
+who_called_me=$_
+who_am_i=$0
+[[ ${who_called_me} == ${who_am_i} ]] && TEST=true
+
+# Set up a way to safely exit when being sourced vs executed.
+if [[ "$0" != "$BASH_SOURCE" ]]; then
+    safe_exit=return
+else
+    safe_exit=exit
+fi
+
+# Discover our AD realm/domain.
+export ww_ad_realm=$(realm list --name-only 2>/dev/null | tr '[a-z]' '[A-Z]')
+if [[ -z ${ww_ad_realm} ]]; then
+  # Nothing to do here, we are not joined to an AD domain or other Kerberos realm.
+  warn "Quietly skipping AD function setup, we do not appear to be joined to a domain."
+  safe_exit 0
+fi
+
+#######################################################################################
+#######################################################################################
+################################# Function Library. ###################################
+#######################################################################################
+#######################################################################################
+
+#######################################################################################
+# Determine what our netbios name is.
+function ww_netbios_name () {
+  local retval=0
+  # Get a name from the keytab.
+  if [[ -f /etc/krb5.keytab ]]; then
+    # Try to extract a name from our keytab principals.
+    local netbios=$(klist -k /etc/krb5.keytab | sed -n -re "s/.* ([a-zA-Z0-9_-]+).@${ww_ad_realm}.*/\1/p" | head -1)
+  else
+    # Failsafe, use our short hostname, converting - to _ and making uppercase. Should probably 
+    # truncate this to NETBIOS max length as well. 
+    netbios=$(hostname -s | tr 'a-z' 'A-Z' | tr '-' '_')
+  fi
+  # Set error if nothing returned.
+  [[ -z ${netbios} ]] && retval=1
+  echo ${netbios}
+  return ${retval}
+}
+
+
+#######################################################################################
+# kinit a MACHINE account ticket.
+function ww_kinit () {
+  local retval=0
+  KINIT=$(which kinit)
+  KLIST=$(which klist)
+  NETBIOS=$(ww_netbios_name)
+
+  # Belt and suspenders. If Kerberos tools aren't here this function 
+  # shouldn't even be defined. However, if for some reason a `dnf remove ...` happened
+  # we'll want to catch that error so don't just assume things are right.
+  if [[ -z $KINIT ]] || [[ -z $KLIST ]]; then
+    warn "$0: Kerberos tools are not installed."
+    retval=2
+  elif [[ ! -f /etc/krb5.keytab ]]; then
+    warn "$0: Unable to kinit, missing keytab file."
+    retval=3
+  elif klist -s; then
+    warn "$0: kinit skipped, active ticket already exists."
+    retval=0
+  else
+    upn="${NETBIOS}\$@${ww_ad_realm}"
+    kinit -k -t /etc/krb5.keytab ${upn}
+    retval=$?
+    if [[ $retval -gt 0 ]]; then
+      warn "$0: ww_kinit() Couldn't kinit to ${upn}"
+    fi
+  fi
+  return $retval
+}
+export -f ww_kinit
+
