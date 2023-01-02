@@ -15,8 +15,8 @@ function usage () {
 }
 
 function failsafe_hwaddr() {
-    local device=$(ip -o addr | awk '/100.64/ {print $2}')
-    local hwaddr=$(ip -o link show $device | awk '{print $17}')
+    local device=( $(ip -o addr | awk '/100.64/ {print $2}') )
+    local hwaddr=$(ip -o link show ${device[0]} | awk '{print $17}')
     echo ${hwaddr}
 }
 
@@ -45,7 +45,7 @@ function update () {
     return ${retval}
 }
 
-YQ=$(which yq 2> /dev/null) || die "$0: Please install yq."
+YQ=$(which yq 2> /dev/null) || die "$0: Please install yq: https://github.com/mikefarah/yq"
 
 export cmd=$1
 shift
