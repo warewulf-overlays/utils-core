@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Author: griznog
+# Purpose: Update overlays on a live node.
+
+# Pull in warewulf functions/variables for this node.
+[[ -f /warewulf/etc/functions ]] && source /warewulf/etc/functions || exit 1
+
+retval=0
+
+function usage () {
+  echo "usage: $0 command overlay [options]"
+  echo $1
+  exit 1
+}
+
+function failsafe_hwaddr() {
+    local device=$(ip -o addr | awk '/100.64/ {print $2}')
+    local hwaddr=$(ip -o link show $device | awk '{print $17}')
+    echo ${hwaddr}
+}
+
+function update () {
+    local ovl=$1
+    local retval=0
+
+    # If a pre-update hooks exists, run it.
+    [[ -x /warewulf/sbin/overlay.${ovl}.pre-update.sh ]] && /warewulf/sbin/overlay.${ovl}.pre-update.sh
+
+    # Current URI for these: imgextract /provision/{{.Hwaddr}}?assetkey=${asset}&uuid=${uuid}&stage=runtime&compress=gz 
+    # Get the overlay update image
+    # URL="http://${WWMASTER}:9873/overlay-runtime/${WWHWADDR:-$(failsafe_hwaddr)}?overlay=${ovl}"
+    URL="http://${WWMASTER}:9873/overlay-runtime/${WWHWADDR:-$(failsafe_hwaddr)}?overlay=${ovl}&compress=gz"
+    if ! wget -q "${URL}" -O /tmp/${ovl}.img.gz; then
+      warn "Failed to get overlay."
+      retval=1 
+    elif ! zcat /tmp/${ovl}.img.gz | cpio  -idvu -D / > /tmp/overlay-manifest-${ovl}.txt 2>&1; then
+      warn "Failed to uncompress/unpack overlay ${ovl}"
+      retval=1
+    fi
+
+    # If a post-update hook exists, run it. 
+    [[ -x /warewulf/sbin/overlay.${ovl}.post-update.sh ]] && /warewulf/sbin/overlay.${ovl}.post-update.sh
+
+    return ${retval}
+}
+
+YQ=$(which yq 2> /dev/null) || die "$0: Please install yq."
+
+export cmd=$1
+shift
+export ovl=$1
+shift
+export opt="$*"
+
+declare -A overlays
+for profile in $( yq ".nodes.${ME}.profiles" /warewulf/etc/nodes.conf | sed 's/^- *//g' ); do
+  for overlay in $( yq ".nodeprofiles.${profile}.[\"runtime overlay\"]" /warewulf/etc/nodes.conf | sed 's/^- *//g' ); do
+    overlays[${overlay}]="true"
+  done
+done
+
+# Do whatever we were told to do, drill sergeant.  
+case ${cmd} in
+  list)
+    for overlay in ${!overlays[*]}; do
+      echo ${overlay}
+    done
+    ;;
+  update)
+    # Verify this is a valid overlay for this node. 
+    [[ ${overlays[${ovl}]} != "true" ]] && usage "${ovl} not found in node config."
+    
+    # Update the overlay.
+    update ${ovl}
+    ;;
+  update-force)
+    # Update the overlay, don't check if valid.
+    update ${ovl}
+    ;;
+  *)
+    echo "Unrecognized command: ${cmd}"
+    usage
+    ;;
+esac
+
+# We'll add error collecting foo to this later.
+exit ${retval}
