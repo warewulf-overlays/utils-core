@@ -21,7 +21,7 @@ export ww_ad_realm=$(realm list --name-only 2>/dev/null | tr '[a-z]' '[A-Z]')
 if [[ -z ${ww_ad_realm} ]]; then
   # Nothing to do here, we are not joined to an AD domain or other Kerberos realm.
   warn "Quietly skipping AD function setup, we do not appear to be joined to a domain."
-  safe_exit 0
+  ${safe_exit} 0
 fi
 
 #######################################################################################
