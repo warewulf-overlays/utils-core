@@ -24,6 +24,8 @@ function update () {
     local ovl=$1
     local retval=0
 
+    warn "Updating ${ovl}"
+
     # If a pre-update hooks exists, run it.
     [[ -x /warewulf/sbin/overlay.${ovl}.pre-update.sh ]] && /warewulf/sbin/overlay.${ovl}.pre-update.sh
 
@@ -77,6 +79,11 @@ case ${cmd} in
   update-force)
     # Update the overlay, don't check if valid.
     update ${ovl}
+    ;;
+  update-all)
+    for overlay in ${!overlays[*]}; do
+      update ${overlay}
+    done
     ;;
   *)
     echo "Unrecognized command: ${cmd}"
