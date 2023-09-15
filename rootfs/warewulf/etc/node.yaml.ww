@@ -1,0 +1,25 @@
+nodeconfig:
+  wwmaster: {{ .BuildHost }}
+  container: {{ .ContainerName }}
+  profiles:
+  {{- range $index, $value := .Profiles }}
+    - {{ $value }}
+  {{- end }}
+  dnf roles: {{ .Tags.dnf_roles }}
+  runtime overlay:
+  {{- range $index, $value := .RuntimeOverlay }}
+    - {{ $value }}
+  {{- end }}
+  system overlay:
+  {{- range $index, $value := .SystemOverlay }}
+    - {{ $value }}
+  {{- end }}
+  netdevs:
+{{- range $devname, $netdev := .NetDevs }}
+{{- if or (eq $netdev.Primary "true") (eq $devname "clusternet") }}
+    {{ $devname }}:
+      hwaddr: {{ $netdev.Hwaddr }}
+      ipaddr: {{ $netdev.Ipaddr }}
+{{- end }} 
+{{- end }}
+
