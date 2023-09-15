@@ -18,6 +18,7 @@ fi
 
 # Discover our AD realm/domain.
 export ww_ad_realm=$(realm list --name-only 2>/dev/null | tr '[a-z]' '[A-Z]')
+export ww_ad_realm=czbiohub.org # We broke realm joins when splitting domain config to /etc/sssd/conf.d
 if [[ -z ${ww_ad_realm} ]]; then
   # Nothing to do here, we are not joined to an AD domain or other Kerberos realm.
   warn "Quietly skipping AD function setup, we do not appear to be joined to a domain."
