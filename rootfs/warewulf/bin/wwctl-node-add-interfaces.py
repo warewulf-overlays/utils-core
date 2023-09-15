@@ -70,6 +70,6 @@ for interface in if_info.keys():
 
     # Set up flags.
     hwaddr_flag = "--hwaddr=%s" % hwaddr
-    nettag_flag = " ".join([ '--nettag="%s"' % tag for tag in nettags ])
-    print("wwctl node set --netname=%s --netdev=%s %s %s %s %s" % (interface, interface, hwaddr_flag, ipaddr_flag, nettag_flag, hostname))
+    nettag_flag = " ".join([ '--nettagadd="%s"' % tag for tag in nettags ])
+    print("wwctl node set --yes --netname=%s --netdev=%s %s %s %s %s" % (interface, interface, hwaddr_flag, ipaddr_flag, nettag_flag, hostname))
 
