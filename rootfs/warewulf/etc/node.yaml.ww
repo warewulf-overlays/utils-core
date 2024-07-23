@@ -1,3 +1,6 @@
+# This file is used by our home grown utilities for managing/updating overlays
+# and other tasks. Generally only by utils written in python.
+---
 nodeconfig:
   wwmaster: {{ .BuildHost }}
   container: {{ .ContainerName }}
@@ -20,6 +23,5 @@ nodeconfig:
     {{ $devname }}:
       hwaddr: {{ $netdev.Hwaddr }}
       ipaddr: {{ $netdev.Ipaddr }}
-{{- end }} 
 {{- end }}
-
+{{- end }}
