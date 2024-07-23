@@ -3,9 +3,6 @@
 # Pull together in the environment some common things that might be useful
 # to our later config scripts, services, utilities, etc.
 #
-# Note also that settings-local will be included after this, with that file
-# being untracked by git so local settings can be maintained separately.
-
 # Are we being sourced or ran directly? We store the following to find out.
 # VARIABLE    VALUE_SOURCED    VALUE_EXECUTED
 # $_          _filedir         EMPTY
@@ -28,23 +25,6 @@ export WWMASTER="{{ .BuildHost }}"
 export WWPROVISIONER=100.64.15.254
 export WWBUILD="{{ .BuildTime }}"
 export WWSOURCE="{{ .BuildSource }}"
-
-#######################################################################################
-# Primary Network Info if a primary device is defined.
-{{range $devname, $netdev := .NetDevs -}}
-{{ if eq $netdev.Primary "true" -}}
-export WWNETDEV="{{ $devname }}"
-export WWHWADDR="{{ $netdev.Hwaddr }}"
-export WWIPADDR="{{ $netdev.Ipaddr }}"
-{{ end -}} 
-{{ end }}
-
-#######################################################################################
-# Associative array with all node networking info from warewulf.
-declare -A -g WWNETDEVS
-{{range $devname, $netdev := .NetDevs -}}
-WWNETDEVS["{{- $devname -}}"]="IPADDR={{ $netdev.Ipaddr }},NETMASK={{ $netdev.Netmask }},HWADDR={{ $netdev.Hwaddr }}"
-{{ end -}}
 
 #######################################################################################
 # Root of our overlay mob on the node.
@@ -71,28 +51,6 @@ export ww_kernelparams
 # Common place to store state files, make sure it exists.
 export ww_state_dir=/warewulf/var/state
 [[ -d ${ww_state_dir} ]] || mkdir ${ww_state_dir}
-
-#######################################################################################
-# Active Network Interface Info, unlike templated values we update this at runtime.
-declare -A -g ww_interfaces
-declare -A -g ww_ipaddr
-declare -A -g ww_netmask
-for interface in $(ip -o addr | grep -v virbr | awk '/inet / {print $2 "," $4}'); do
-    device=$(echo ${interface} | cut -f1 -d,)
-    ipaddr=$(echo ${interface} | cut -f2 -d',' | cut -f1 -d'/')
-    netmask=$(echo ${interface} | cut -f2 -d',' | cut -f2 -d'/')
-
-    if [[ -z "${ww_interfaces[${device}]}" ]]; then
-        ww_interfaces[${device}]="${ipaddr}"
-    else
-        ww_interfaces[${device}]+=",${ipaddr}"
-    fi
-    ww_ipaddr[${ipaddr}]="${device}"
-    ww_netmask[${ipaddr}]="${netmask}"
-done
-unset interface device ipaddr prefix
-export ww_interfaces ww_ipaddr ww_netmask
-
 
 #######################################################################################
 # Runtime Self-identify, use our name from the kernel cmdline if it exists, fall back
